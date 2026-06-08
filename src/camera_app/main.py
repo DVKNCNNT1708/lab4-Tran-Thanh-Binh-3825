@@ -15,7 +15,9 @@ async def http_exception_handler(request: Request, exc: HTTPException):
         }
     )
 
+# Sửa đoạn này trong src/camera_app/main.py
 @app.get("/health")
+@app.head("/health", include_in_schema=False) # Thêm dòng này để chấp nhận cả lệnh HEAD
 def health_check():
     return {"status": "ok"}
 

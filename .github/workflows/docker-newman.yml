@@ -45,8 +45,20 @@ jobs:
 
       - name: Wait for service health
         run: |
-          # Dùng --verbose để xem wait-on đang làm gì
-          npx wait-on http://localhost:8000/health --method GET --timeout 30000 --verbose
+          echo "Waiting for service to be ready..."
+          # Dùng curl GET bình thường, bỏ qua method HEAD phức tạp
+          for i in {1..30}; do
+            # -f: fail silently on server errors (trả về lỗi nếu status code >= 400)
+            if curl -f -s http://localhost:8000/health; then
+              echo "Service is up and running!"
+              exit 0
+            fi
+            echo "Waiting ($i/30)..."
+            sleep 1
+          done
+          echo "Service timed out!"
+          docker logs fit4110-camera-lab04
+          exit 1
 
       - name: Run Newman against Docker container
         run: npm run test:local
