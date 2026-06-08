@@ -1,0 +1,379 @@
+{
+  "info": {
+    "_postman_id": "17507819-47f8-45e2-a24e-715961ba2b4a",
+    "name": "FIT4110_lab03_camera",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "55141684",
+    "_collection_link": "https://go.postman.co/collection/55141684-17507819-47f8-45e2-a24e-715961ba2b4a?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "01_Functional",
+      "item": [
+        {
+          "name": "GET /health",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {\r",
+                  "    pm.response.to.have.status(200);\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Response contains status ok\", function () {\r",
+                  "    const json = pm.response.json();\r",
+                  "    pm.expect(json).to.have.property(\"status\", \"ok\");\r",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /vision/detect - Gửi ảnh hợp lệ",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 202 (Accepted)\", function () {\r",
+                  "    pm.response.to.have.status(202);\r",
+                  "});\r",
+                  "\r",
+                  "pm.test(\"Response có chứa detectionId và status\", function () {\r",
+                  "    const json = pm.response.json();\r",
+                  "    pm.expect(json).to.have.property(\"detectionId\");\r",
+                  "    pm.expect(json).to.have.property(\"status\", \"PROCESSING\");\r",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"eventId\": \"123e4567-e89b-12d3-a456-426614174000\",\r\n  \"cameraId\": \"CAM-GATE-01\",\r\n  \"imageUrl\": \"https://storage.campus.local/frames/12345.jpg\",\r\n  \"timestamp\": \"2026-05-23T10:00:00Z\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/vision/detect",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "vision",
+                "detect"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "02_Auth",
+      "item": [
+        {
+          "name": "POST /vision/detect - Thiếu Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const env = pm.environment.get('env') || 'mock';\r",
+                  "if (env === 'mock') {\r",
+                  "    pm.test('Bỏ qua trên Mock vì Prism không check Auth thật', function () {\r",
+                  "        pm.expect(true).to.eql(true);\r",
+                  "    });\r",
+                  "} else {\r",
+                  "    pm.test('Missing token returns 401 or 403', function () {\r",
+                  "        pm.expect([401, 403]).to.include(pm.response.code);\r",
+                  "    });\r",
+                  "}"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"eventId\": \"123e4567-e89b-12d3-a456-426614174000\",\r\n  \"cameraId\": \"CAM-GATE-01\",\r\n  \"imageUrl\": \"https://storage.campus.local/frames/12345.jpg\",\r\n  \"timestamp\": \"2026-05-23T10:00:00Z\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/vision/detect",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "vision",
+                "detect"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "03_Negative",
+      "item": [
+        {
+          "name": "POST /vision/detect - Sai định dạng UUID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Dữ liệu sai định dạng trả về lỗi 400 hoặc 422\", function () {\r",
+                  "    pm.expect([400, 422]).to.include(pm.response.code);\r",
+                  "});\r",
+                  "pm.test(\"Lỗi tuân thủ chuẩn ProblemDetails\", function () {\r",
+                  "    const json = pm.response.json();\r",
+                  "    pm.expect(json).to.have.property(\"status\");\r",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": " Bearer {{authToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Prefer",
+                "value": "code=422",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"eventId\": \"khong-phai-uuid\",\r\n  \"cameraId\": \"CAM-GATE-01\",\r\n  \"imageUrl\": \"https://storage.campus.local/frames/12345.jpg\",\r\n  \"timestamp\": \"2026-05-23T10:00:00Z\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/vision/detect",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "vision",
+                "detect"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "04_Boundary_Reliability",
+      "item": [
+        {
+          "name": "GET /vision/detections/{id} - ID Không tồn tại",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Không tìm thấy ID trả về mã 404\", function () {\r",
+                  "    pm.response.to.have.status(404);\r",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": " Bearer {{authToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Prefer",
+                "value": "code=404",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/vision/detections/00000000-0000-0000-0000-000000000000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "vision",
+                "detections",
+                "00000000-0000-0000-0000-000000000000"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "05_Consumer_side_Smoke",
+      "item": [
+        {
+          "name": "GET /vision/detections/{id} - Đọc kết quả",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Lấy kết quả thành công (200 OK)\", function () {\r",
+                  "    pm.response.to.have.status(200);\r",
+                  "});\r",
+                  "pm.test(\"Consumer (Camera) đọc được đối tượng nhận diện\", function () {\r",
+                  "    const json = pm.response.json();\r",
+                  "    pm.expect(json).to.have.property(\"detectionId\");\r",
+                  "    pm.expect(json).to.have.property(\"status\");\r",
+                  "    pm.expect(json).to.have.property(\"objects\"); // Kiểm tra mảng đối tượng (PERSON/VEHICLE)\r",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": " Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/vision/detections/123e4567-e89b-12d3-a456-426614174000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "vision",
+                "detections",
+                "123e4567-e89b-12d3-a456-426614174000"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "06_Local_only_NonFunctional",
+      "item": [
+        {
+          "name": "GET /vision/models/info - Check tốc độ",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const env = pm.environment.get('env') || 'mock';\r",
+                  "if (env === 'local') {\r",
+                  "    pm.test(\"Tốc độ lấy thông tin model dưới 500ms\", function () {\r",
+                  "        pm.expect(pm.response.responseTime).to.be.below(500);\r",
+                  "    });\r",
+                  "} else {\r",
+                  "    pm.test(\"Bỏ qua test tốc độ trên Mock\", function () {\r",
+                  "        pm.expect(true).to.eql(true);\r",
+                  "    });\r",
+                  "}"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": " Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/vision/models/info",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "vision",
+                "models",
+                "info"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

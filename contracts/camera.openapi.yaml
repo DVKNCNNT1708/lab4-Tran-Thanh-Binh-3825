@@ -1,0 +1,237 @@
+openapi: 3.1.0
+info:
+  title: Smart Campus — AI Vision & Camera Stream
+  version: 1.0.0
+  description: Hợp đồng API giữa Camera Stream (Consumer) và AI Vision (Provider) để nhận diện hình ảnh.
+servers:
+  - url: http://localhost:4010
+    description: Prism mock server
+tags:
+  - name: health
+    description: Kiểm tra trạng thái service
+  - name: vision
+    description: Các API xử lý nhận diện hình ảnh (AI Vision)
+security:
+  - bearerAuth: []
+
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      summary: Kiểm tra trạng thái service
+      tags: [health]
+      security: []
+      responses:
+        '200':
+          description: Service đang hoạt động
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+
+  /vision/models/info:
+    get:
+      operationId: getModelInfo
+      summary: Lấy thông tin model AI hiện tại
+      tags: [vision]
+      responses:
+        '200':
+          description: Thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  version:
+                    type: string
+                    example: "v2.1.0-yolo"
+
+  /vision/detect:
+    post:
+      operationId: requestDetection
+      summary: Gửi yêu cầu nhận diện hình ảnh
+      description: Nhận yêu cầu chứa URL ảnh. Trả về detectionId ngay lập tức (Cơ chế Bất đồng bộ).
+      tags: [vision]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DetectRequest'
+      responses:
+        '202':
+          description: Đã tiếp nhận yêu cầu, đang xử lý.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetectAccepted'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /vision/detections/{detectionId}:
+    get:
+      operationId: getDetectionResult
+      summary: Lấy kết quả nhận diện
+      description: Polling để lấy kết quả sau khi gửi yêu cầu detect.
+      tags: [vision]
+      parameters:
+        - name: detectionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Kết quả nhận diện thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetectionResult'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    DetectRequest:
+      type: object
+      required: [eventId, cameraId, imageUrl, timestamp]
+      additionalProperties: false
+      properties:
+        eventId:
+          type: string
+          format: uuid
+          description: Khóa chống trùng (Idempotency Key)
+        cameraId:
+          type: string
+          example: "CAM-GATE-01"
+        imageUrl:
+          type: string
+          format: uri
+          example: "https://storage.campus.local/frames/12345.jpg"
+        timestamp:
+          type: string
+          format: date-time
+
+    DetectAccepted:
+      type: object
+      required: [detectionId, status]
+      properties:
+        detectionId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          example: "PROCESSING"
+
+    DetectionResult:
+      type: object
+      required: [detectionId, status, objects, riskLevel]
+      properties:
+        detectionId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [PROCESSING, COMPLETED, FAILED]
+          example: "COMPLETED"
+        objects:
+          type: array
+          items:
+            $ref: '#/components/schemas/DetectedObject'
+        confidence:
+          type: [number, "null"]
+          description: Độ tin cậy tổng thể
+          example: 0.95
+        riskLevel:
+          type: [string, "null"]
+          description: Nếu không có rủi ro hoặc không nhận diện được thì trả về null
+          example: "HIGH"
+
+    # --- Demo Đa hình (Polymorphism) theo yêu cầu Lab 02 ---
+    DetectedObject:
+      oneOf:
+        - $ref: '#/components/schemas/PersonDetection'
+        - $ref: '#/components/schemas/VehicleDetection'
+      discriminator:
+        propertyName: objectType
+        mapping:
+          PERSON: '#/components/schemas/PersonDetection'
+          VEHICLE: '#/components/schemas/VehicleDetection'
+
+    PersonDetection:
+      type: object
+      required: [objectType, hasMask]
+      properties:
+        objectType:
+          type: string
+          const: PERSON
+        hasMask:
+          type: boolean
+          example: true
+
+    VehicleDetection:
+      type: object
+      required: [objectType, licensePlate]
+      properties:
+        objectType:
+          type: string
+          const: VEHICLE
+        licensePlate:
+          type: string
+          example: "29A-123.45"
+
+    # --- Error Schema Chuẩn ---
+    Problem:
+      type: object
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: [string, "null"]
+
+  responses:
+    BadRequest:
+      description: Dữ liệu sai định dạng
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    UnprocessableEntity:
+      description: Dữ liệu đúng JSON nhưng không hợp lệ (VD ảnh quá lớn)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    NotFound:
+      description: Không tìm thấy tài nguyên
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    InternalServerError:
+      description: Lỗi hệ thống AI
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
